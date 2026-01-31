@@ -179,7 +179,8 @@ class HuggingFaceModelWrapper(ModelWrapper):
         
         # Compute token log probabilities if requested
         token_log_probs = None
-        if return_log_probs and hasattr(outputs, 'scores'):
+        scores = None
+        if return_log_probs and hasattr(outputs, "scores") and outputs.scores:
             # outputs.scores is a tuple of tensors, one per generation step
             scores = torch.stack(outputs.scores, dim=1)  # [batch, gen_len, vocab]
             log_probs = F.log_softmax(scores, dim=-1)
@@ -191,8 +192,11 @@ class HuggingFaceModelWrapper(ModelWrapper):
                 index=generated_ids.unsqueeze(-1)
             ).squeeze(-1)  # [batch, gen_len]
         
+        last_logits = None
+        if hasattr(outputs, "scores") and outputs.scores:
+            last_logits = outputs.scores[-1]
         return ModelOutput(
-            logits=outputs.scores[-1] if hasattr(outputs, 'scores') else None,
+            logits=last_logits,
             generated_ids=generated_ids,
             generated_text=generated_text,
             token_log_probs=token_log_probs,
