@@ -1,4 +1,4 @@
-# [AAAI '26 MEW] Optimizing a Margin of Safety via Prompt Repair in Large Language Models
+# Optimizing a Margin of Safety via Prompt Repair in Large Language Models
 
 This repository implements an attribution-drive prompt repair workflow that optimizes for a margin of safety.
 
