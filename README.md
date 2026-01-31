@@ -19,3 +19,8 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+Set your huggingface token in command line: 
+```
+huggingface-cli login
+```
