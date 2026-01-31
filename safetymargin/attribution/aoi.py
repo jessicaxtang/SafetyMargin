@@ -15,6 +15,7 @@ alpha_i(B) = R(Q, B ∪ {s_i}) - R(Q, B)
 - Q: question/prompt stem
 - M: minimal baseline (system/instructions)
 - S: list of specification spans {s_i}
+# - A: intent additions {a_i} (used in pipeline.py and scenarios.py)
 - Baselines B can be:
   * empty: []
   * minimal: M
