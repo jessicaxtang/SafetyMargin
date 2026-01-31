@@ -98,25 +98,6 @@ class HuggingFaceModelWrapper(ModelWrapper):
             trust_remote_code=True,
             token=hf_token,
         )
-        # Prefer left-side padding/truncation for decoder-only models so we keep the
-        # most recent tokens (including the assistant header) when long prompts occur.
-        try:
-            self.tokenizer.padding_side = "left"
-        except Exception:
-            pass
-        try:
-            # Keep the end of the prompt (assistant preamble) intact
-            setattr(self.tokenizer, "truncation_side", "left")
-        except Exception:
-            pass
-        # Use model_max_length if it looks sane; some tokenizers set an extremely large sentinel.
-        try:
-            t_max = getattr(self.tokenizer, "model_max_length", None)
-            if isinstance(t_max, int) and 0 < t_max < 100_000:
-                # Keep the smaller of configured and tokenizer limits
-                self.max_length = min(self.max_length, t_max) if self.max_length else t_max
-        except Exception:
-            pass
         # Set padding token if not set (and suppress warning)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -148,24 +129,6 @@ class HuggingFaceModelWrapper(ModelWrapper):
         self.model.eval()
         print(f"Model loaded on {self.device}")
     
-    @staticmethod
-    def _looks_like_chat_rendered(text: str) -> bool:
-        """Heuristically detect if `text` already contains a chat template rendering.
-
-        This avoids double-applying `apply_chat_template` when callers pass a
-        pre-rendered prompt. We look for special header markers used by modern
-        chat templates (e.g., Llama 3).
-        """
-        if not isinstance(text, str) or not text:
-            return False
-        markers = (
-            "<|start_header_id|>",
-            "<|end_header_id|>",
-            "<|eot_id|>",
-            "<|eom_id|>",
-        )
-        return any(m in text for m in markers)
-    
     def generate(
         self,
         prompt: str,
@@ -187,113 +150,32 @@ class HuggingFaceModelWrapper(ModelWrapper):
         Returns:
             ModelOutput with generated text and metadata
         """
-        tokenizer = self.tokenizer
-        if tokenizer is None:
-            raise RuntimeError("Tokenizer not initialised; call load() before generate().")
-
-        use_chat_template = hasattr(tokenizer, "apply_chat_template") and not self._looks_like_chat_rendered(prompt)
-        rendered_prompt = prompt
-        if use_chat_template:
-            messages = [{"role": "user", "content": prompt}]
-            try:
-                rendered_prompt = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
-            except Exception:
-                rendered_prompt = prompt
-                use_chat_template = False
-
-        # Tokenize input (avoid double special tokens when chat template already adds them)
-        tokenizer_kwargs = {
-            "return_tensors": "pt",
-            "truncation": True,
-            "max_length": self.max_length,
-        }
-        if use_chat_template:
-            tokenizer_kwargs["add_special_tokens"] = False
-
-        inputs = tokenizer(
-            rendered_prompt,
-            **tokenizer_kwargs,
+        # Tokenize input
+        inputs = self.tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=self.max_length,
         )
         input_ids = inputs["input_ids"].to(self.device)
         attention_mask = inputs["attention_mask"].to(self.device)
-
-        pad_token_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else tokenizer.eos_token_id
-        eos_token_id = tokenizer.eos_token_id
-
-        # Build a safe GenerationConfig using only supported keys to avoid warnings
-        gen_cfg = None
-        try:
-            gen_cfg = self.model.generation_config.clone()
-            # Respect max_new_tokens; fall back to max_length if needed
-            if hasattr(gen_cfg, "max_new_tokens"):
-                gen_cfg.max_new_tokens = int(max_new_tokens)
-            else:
-                # some very old versions only use max_length
-                gen_cfg.max_length = int(input_ids.shape[1] + max_new_tokens)
-            # Enable sampling only when temperature > 0 and set related params then
-            do_sample = bool((temperature or 0.0) > 0.0)
-            if hasattr(gen_cfg, "do_sample"):
-                gen_cfg.do_sample = do_sample
-            if do_sample and hasattr(gen_cfg, "temperature"):
-                gen_cfg.temperature = float(max(1e-8, temperature))
-            if do_sample and hasattr(gen_cfg, "top_p"):
-                gen_cfg.top_p = float(top_p)
-        except Exception:
-            gen_cfg = None
-
+        
         # Generate
         with torch.no_grad():
-            if gen_cfg is not None:
-                outputs = self.model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    generation_config=gen_cfg,
-                    use_cache=self.use_cache,
-                    return_dict_in_generate=True,
-                    output_scores=return_log_probs,
-                    pad_token_id=pad_token_id,
-                    eos_token_id=eos_token_id,
-                )
-            else:  # fallback to kwargs path
-                outputs = self.model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    do_sample=temperature > 0,
-                    use_cache=self.use_cache,
-                    return_dict_in_generate=True,
-                    output_scores=return_log_probs,
-                    pad_token_id=pad_token_id,
-                    eos_token_id=eos_token_id,
-                )
-
-        # Extract sequences robustly across transformers versions
-        sequences = getattr(outputs, "sequences", None)
-        if sequences is None:
-            sequences = getattr(outputs, "generated_ids", None)
-        if sequences is None:
-            try:
-                import torch as _torch
-                if isinstance(outputs, _torch.Tensor):
-                    sequences = outputs
-            except Exception:
-                sequences = None
-        if sequences is None:
-            # Give up gracefully
-            gen_ids = None
-            gen_text = ""
-        else:
-            gen_ids = sequences[:, input_ids.shape[1]:]
-            try:
-                gen_text = tokenizer.decode(gen_ids[0], skip_special_tokens=True)
-            except Exception:
-                gen_text = ""
+            outputs = self.model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=max_new_tokens,
+                temperature=temperature,
+                top_p=top_p,
+                do_sample=temperature > 0,
+                use_cache=self.use_cache,
+                return_dict_in_generate=True,
+                output_scores=return_log_probs,
+            )
+        
+        generated_ids = outputs.sequences[:, input_ids.shape[1]:]
+        generated_text = self.tokenizer.decode(generated_ids[0], skip_special_tokens=True)
         
         # Compute token log probabilities if requested
         token_log_probs = None
@@ -309,26 +191,14 @@ class HuggingFaceModelWrapper(ModelWrapper):
                 index=generated_ids.unsqueeze(-1)
             ).squeeze(-1)  # [batch, gen_len]
         
-        # Best-effort extract last-step logits if available
-        last_scores = None
-        if hasattr(outputs, "scores"):
-            try:
-                scores_obj = outputs.scores
-                if isinstance(scores_obj, (list, tuple)) and len(scores_obj) > 0:
-                    last_scores = scores_obj[-1]
-            except Exception:
-                last_scores = None
-
-        num_generated_tokens = int(gen_ids.shape[1]) if gen_ids is not None else 0
         return ModelOutput(
-            logits=last_scores,
-            generated_ids=gen_ids,
-            generated_text=gen_text,
+            logits=outputs.scores[-1] if hasattr(outputs, 'scores') else None,
+            generated_ids=generated_ids,
+            generated_text=generated_text,
             token_log_probs=token_log_probs,
             metadata={
-                "num_generated_tokens": num_generated_tokens,
+                "num_generated_tokens": generated_ids.shape[1],
                 "prompt_length": input_ids.shape[1],
-                "prompt_preview": (rendered_prompt[:80] if isinstance(rendered_prompt, str) else ""),
             }
         )
     
@@ -359,8 +229,6 @@ class HuggingFaceModelWrapper(ModelWrapper):
             prompt_rendered,
             return_tensors="pt",
             add_special_tokens=False,
-            truncation=True,
-            max_length=self.max_length,
         )
         target_enc = tokenizer(
             target_text,
