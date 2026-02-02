@@ -9,7 +9,7 @@ This repository implements an attribution-drive prompt repair workflow that opti
   experiments.
 - `scripts/pipeline.py` – implements the prompt repair workflow
 - `scripts/test_repair_transfer.py` - tests prompt repair method on the unseen queries
-- `data/` - contains prompts and spans from 5 safety cases
+- `dataset/` - test cases in multiple formats (JSON, YAML, CSV)
 
 ## Installation
 
@@ -24,3 +24,19 @@ Set your huggingface token in command line:
 ```
 huggingface-cli login
 ```
+
+
+## To run:
+
+```bash
+# Legacy JSON format (backward compatible)
+python scripts/pipeline.py --case-file dataset/privacy.json --device cuda
+
+# New simplified YAML format (recommended)
+python scripts/pipeline.py --case-file dataset/cases/privacy_ssn.yaml --device cuda
+
+# CSV format for bulk datasets
+python scripts/pipeline.py --case-file dataset/cases/bulk_cases.csv --case-id privacy_csv_01 --device cuda
+```
+
+**See [DATASET_FORMATS.md](DATASET_FORMATS.md) for format documentation and [dataset/README.md](dataset/README.md) for detailed examples.**

@@ -26,7 +26,7 @@ def test_pipeline(case_file: str, model: str = "meta-llama/Llama-3.2-1B-Instruct
     Returns:
         Dictionary with test results
     """
-    from scripts.pipeline_nov3 import parse_args, run_pipeline
+    from scripts.pipeline import parse_args, run_pipeline
     
     # Build command-line arguments
     argv = [

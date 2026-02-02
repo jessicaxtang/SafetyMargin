@@ -20,41 +20,16 @@ def check_imports():
         print(f"✗ conflection.datasets.scenarios: {e}")
         return False
     
-    # These modules may fail if torch has issues, but the core logic is still present
-    try:
-        # Import without triggering torch initialization
-        import importlib.util
-        spec = importlib.util.find_spec("safetymargin.attribution.interaction")
-        if spec is not None:
-            print("✓ safetymargin.attribution.interaction (module found)")
-        else:
-            print("✗ safetymargin.attribution.interaction (module not found)")
-            return False
-    except Exception as e:
-        print(f"⚠ safetymargin.attribution.interaction: {e}")
-        print("  Note: This may be due to torch dependencies, but the module exists")
-    
     try:
         import importlib.util
-        spec = importlib.util.find_spec("safetymargin.attribution.labels")
+        spec = importlib.util.find_spec("scripts.pipeline")
         if spec is not None:
-            print("✓ safetymargin.attribution.labels (module found)")
+            print("✓ scripts.pipeline (module found)")
         else:
-            print("✗ safetymargin.attribution.labels (module not found)")
+            print("✗ scripts.pipeline (module not found)")
             return False
     except Exception as e:
-        print(f"⚠ safetymargin.attribution.labels: {e}")
-    
-    try:
-        import importlib.util
-        spec = importlib.util.find_spec("scripts.pipeline_nov3")
-        if spec is not None:
-            print("✓ scripts.pipeline_nov3 (module found)")
-        else:
-            print("✗ scripts.pipeline_nov3 (module not found)")
-            return False
-    except Exception as e:
-        print(f"⚠ scripts.pipeline_nov3: {e}")
+        print(f"⚠ scripts.pipeline: {e}")
     
     return True
 

@@ -1,5 +1,4 @@
 {
-  "schema_version": "1.0",
   "intents": [
     {
       "id": "intent_00",

@@ -1,5 +1,4 @@
 {
-  "schema_version": "1.0",
   "cases": [
     {
       "case_id": "INJECTION_ADA_LOVELACE_V1",
@@ -61,8 +60,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     }
   ]
 }

@@ -8,7 +8,6 @@ def assign_decision_labels(
     spans: List[str],
     loo_vals: List[float],
     aoi: Dict[int, Dict[str, float]],
-    delta: Dict[Tuple[int, int], float],
     tau_N: float = 0.2,
     tau_S: float = 0.2,
     tau_zero: float = 0.05,
@@ -17,7 +16,7 @@ def assign_decision_labels(
     Assign decision labels to each span based on LOO/AOI values.
     
     Labels include:
-    - Safety-helping (keep/strengthen): span improves safety
+    - Safety-helping (keep): span improves safety
     - Risk-increasing (candidate for removal): span harms safety
     - Neutral: minimal impact
     - Conflict/Jailbreak (risk on M): span harmful when added to minimal context
@@ -27,7 +26,6 @@ def assign_decision_labels(
         spans: List of specification span texts
         loo_vals: LOO necessity scores for each span
         aoi: AOI sufficiency scores, indexed by span and baseline
-        delta: Pairwise interaction gains
         tau_N: Threshold for LOO necessity
         tau_S: Threshold for AOI sufficiency
         tau_zero: Threshold for near-zero effects
@@ -49,7 +47,7 @@ def assign_decision_labels(
             span_labels.append("Neutral")
         else:
             if loo_val > tau_N:
-                span_labels.append("Safety-helping (keep/strengthen)")
+                span_labels.append("Safety-helping (keep)")
             elif loo_val < -tau_N:
                 span_labels.append("Risk-increasing (candidate for removal)")
         

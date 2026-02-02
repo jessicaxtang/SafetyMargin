@@ -474,6 +474,8 @@ def compute_base_scores(
         "log_p_violation(C)": scorer.log_violation(C_ctx),
         "log_p_refusal(M)": scorer.log_refusal(M_ctx),
         "log_p_violation(M)": scorer.log_violation(M_ctx),
+        "f(C)": scorer.f(C_ctx),
+        "f(M)": scorer.f(M_ctx),
         "p_refusal(C)": scorer.f(C_ctx),
         "p_refusal(M)": scorer.f(M_ctx),
     }
@@ -508,13 +510,11 @@ def compute_aoi_baselines(
     S: List[str],
     Q: str,
     top_indices: Iterable[int],
-    targeted_pairs: Iterable[Tuple[int, int]],
     include_empty: bool,
     include_minimal: bool,
     scalar_fn: ScalarFn,
 ) -> Dict[int, Dict[str, float]]:
     top_indices = list(top_indices)
-    targeted_pairs = list(targeted_pairs)
     out: Dict[int, Dict[str, float]] = {i: {} for i in top_indices}
     cache: Dict[str, float] = {}
 
@@ -539,15 +539,6 @@ def compute_aoi_baselines(
             ctx_with = assemble_context(M, [S[i]], Q)
             out[i]["M"] = f_ctx(ctx_with) - baseline_scores["M"]
 
-    for (i, j) in targeted_pairs:
-        if i not in out:
-            continue
-        base_name = f"M+{{s_{j}}}"
-        baseline_ctx = assemble_context(M, [S[j]], Q)
-        baseline_val = f_ctx(baseline_ctx)
-        with_ctx = assemble_context(M, [S[j], S[i]], Q)
-        out[i][base_name] = f_ctx(with_ctx) - baseline_val
-
     C_full = assemble_context(M, S, Q)
     f_full = f_ctx(C_full)
     for i in top_indices:
@@ -556,35 +547,6 @@ def compute_aoi_baselines(
         out[i]["C\\{s_i}"] = f_minus - f_full
 
     return out
-
-
-def compute_interaction_gain(
-    scorer: LogProbNormScorer,
-    M: List[str],
-    S: List[str],
-    Q: str,
-    pairs: Iterable[Tuple[int, int]],
-    scalar_fn: ScalarFn,
-) -> Dict[Tuple[int, int], float]:
-    pairs = list(pairs)
-    if not pairs:
-        return {}
-    cache: Dict[str, float] = {}
-
-    def f_ctx(ctx: str) -> float:
-        if ctx not in cache:
-            cache[ctx] = scalar_fn(ctx)
-        return cache[ctx]
-
-    base_M = f_ctx(assemble_context(M, [], Q))
-    pair_scores: Dict[Tuple[int, int], float] = {}
-    for i, j in pairs:
-        ctx_i = assemble_context(M, [S[i]], Q)
-        ctx_j = assemble_context(M, [S[j]], Q)
-        ctx_ij = assemble_context(M, [S[i], S[j]], Q)
-        val = f_ctx(ctx_ij) - f_ctx(ctx_i) - f_ctx(ctx_j) + base_M
-        pair_scores[(i, j)] = val
-    return pair_scores
 
 
 def compute_intent_aoi(
@@ -609,17 +571,6 @@ def compute_intent_aoi(
     return result
 
 
-def parse_targeted_pairs(specs: Iterable[str]) -> List[Tuple[int, int]]:
-    pairs: List[Tuple[int, int]] = []
-    for spec in specs:
-        parts = [p.strip() for p in spec.split(",") if p.strip()]
-        if len(parts) != 2:
-            raise ValueError(f"Targeted pair must have two comma-separated indices, got '{spec}'")
-        i, j = int(parts[0]), int(parts[1])
-        pairs.append((i, j))
-    return pairs
-
-
 def format_section(title: str) -> str:
     return f"\n=== {title.upper()} ==="
 
@@ -634,13 +585,11 @@ __all__ = [
     "compute_aoi_baselines",
     "compute_base_scores",
     "compute_intent_aoi",
-    "compute_interaction_gain",
     "compute_loo",
     "format_section",
     "generate_outputs",
     "join_context",
     "json_safe",
-    "parse_targeted_pairs",
     "resolve_template_list",
     "split_context_for_chat",
 ]
