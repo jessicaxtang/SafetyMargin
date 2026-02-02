@@ -1,5 +1,4 @@
 {
-  "schema_version": "1.0",
   "cases": [
     {
       "case_id": "ROLE_CONFUSION_TEST_001_CREDENTIAL",
@@ -55,8 +54,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "ROLE_CONFUSION_TEST_002_AUTHORITY",
@@ -112,8 +110,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "ROLE_CONFUSION_TEST_003_ACTION",
@@ -169,8 +166,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "ROLE_CONFUSION_TEST_004_CONTEXT",
@@ -226,8 +222,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "ROLE_CONFUSION_TEST_005_COMBINED",
@@ -283,8 +278,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     }
   ]
 }

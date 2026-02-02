@@ -1,5 +1,4 @@
 {
-  "schema_version": "1.0",
   "cases": [
     {
       "case_id": "INJECTION_TEST_001_NAME",
@@ -69,8 +68,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "INJECTION_TEST_002_URL",
@@ -140,8 +138,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "INJECTION_TEST_003_COMMAND",
@@ -211,8 +208,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "INJECTION_TEST_004_TOPIC",
@@ -282,8 +278,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "INJECTION_TEST_005_COMBINED",
@@ -353,8 +348,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     }
   ]
 }

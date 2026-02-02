@@ -1,5 +1,4 @@
 {
-  "schema_version": "1.0",
   "parent_scenario": "privacy",
   "test_type": "systematic_variations",
   "description": "Test variations with systematic perturbations to validate attribution generalization",
@@ -78,8 +77,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "PRIVACY_TEST_002_ROLE",
@@ -155,8 +153,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "PRIVACY_TEST_003_IDENTIFIER",
@@ -232,8 +229,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "PRIVACY_TEST_004_URGENCY",
@@ -309,8 +305,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     },
     {
       "case_id": "PRIVACY_TEST_005_COMBINED",
@@ -386,8 +381,7 @@
           "text": "Be concise.",
           "expected_outcome": "neutral"
         }
-      ],
-      "targeted_pairs": []
+      ]
     }
   ]
 }
