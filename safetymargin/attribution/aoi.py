@@ -19,7 +19,6 @@ alpha_i(B) = R(Q, B ∪ {s_i}) - R(Q, B)
 - Baselines B can be:
   * empty: []
   * minimal: M
-  * targeted: M + subset T ⊂ S \ {s_i}
   * loo-equivalent: (M ∪ S) \ {s_i}
 R can be: log-likelihood to refs, a reward/judge score in [0,1], etc.
 We only require a scalar.
@@ -30,7 +29,6 @@ class AOIConfig:
     normalize_within_run: bool = True
     temperatures: Tuple[float, ...] = (0.0,)  # average over temps for stability if model supports it
     n_samples: int = 1  # average over stochastic samples if model supports it
-    targeted_pairs: Optional[List[Tuple[int, int]]] = None
     # If provided, compute alpha_i(M ∪ {s_j}) for each (i, j) pair (i != j)
     compute_loo_equivalent: bool = True  # alpha_i(C \ {s_i}) == LOO
     # Names for standard baselines
@@ -80,8 +78,6 @@ class AOIAttributor(AttributionMethod):
         model: BaseModel,
         # Optional: full context C to save callers a join
         C: Optional[List[str]] = None,
-        # Optional targeted baseline sets T_k (each T is a list of indices into S excluding i)
-        targeted_sets: Optional[List[List[int]]] = None,
     ) -> Dict[str, Any]:
         """
         Compute AOI across baselines for each span s_i.
@@ -90,9 +86,8 @@ class AOIAttributor(AttributionMethod):
         {
           "config": {...},
           "spans": S,
-          "baselines": ["empty","minimal","targeted:...","loo_equiv"],
+          "baselines": ["empty","minimal","loo_equiv"],
           "alpha": { i: { baseline_name: float } },
-          "alpha_matrix_targeted": optional np.ndarray [n_spans, n_spans] (i,j) for M∪{s_j},
           "context_scores": {"empty": float, "minimal": float, ...},  # baseline scores without s_i
         }
         """
@@ -115,25 +110,6 @@ class AOIAttributor(AttributionMethod):
         if self.cfg.include_minimal_baseline:
             B_min = list(M)
             baselines.append(("minimal", B_min))
-
-        # Targeted baselines: M ∪ T where T ⊂ S\{s_i}
-        # If targeted_sets not given, derive from cfg.targeted_pairs (i,j)
-        targeted_pairs = self.cfg.targeted_pairs or []
-        targeted_sets = targeted_sets or []
-        # Canonicalize any provided targeted sets as unique names
-        for T in targeted_sets:
-            T = sorted(set(int(t) for t in T if 0 <= t < n))
-            name = "targeted:T=" + ",".join(map(str, T))
-            baselines.append((name, self._build_context(M, [S[t] for t in T])))
-
-        # Pairwise targets M ∪ {s_j} (useful for interaction heatmaps)
-        pairwise_names = []
-        for (i_idx, j_idx) in targeted_pairs:
-            if i_idx == j_idx or not (0 <= i_idx < n and 0 <= j_idx < n):
-                continue
-            name = f"pair:M+{{{j_idx}}}"
-            # We'll expand per-i later; keep a marker for pairwise computation
-            pairwise_names.append((i_idx, j_idx, name))
 
         # LOO-equivalent baseline per i: (M ∪ S) \ {s_i}
         if self.cfg.compute_loo_equivalent:
@@ -165,21 +141,6 @@ class AOIAttributor(AttributionMethod):
                 with_i = list(C_full)  # = (C_minus_i ∪ {s_i})
                 score_with = self._mean_score(model, Q, with_i)
                 result["alpha"][i]["loo_equiv"] = float(score_with - base_score)
-
-        # Optional pairwise matrix alpha_i(M ∪ {s_j})
-        if len(targeted_pairs) > 0:
-            mat = np.zeros((n, n), dtype=float)
-            for (i_idx, j_idx, _nm) in pairwise_names:
-                # Baseline is M ∪ {s_j} (no s_i yet)
-                B = self._build_context(M, [S[j_idx]])
-                base_score = self._mean_score(model, Q, B)
-                score_with = self._mean_score(model, Q, B + [S[i_idx]])
-                delta = float(score_with - base_score)
-                try:
-                    mat[i_idx, j_idx] = delta
-                except TypeError:
-                    mat[i_idx][j_idx] = delta
-            result["alpha_matrix_targeted"] = mat
 
         # Optional normalization (z-score) per baseline across spans for interpretability
         if self.cfg.normalize_within_run:

@@ -19,7 +19,7 @@ from typing import Dict, List, Any, Tuple
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from scripts.pipeline_nov3 import parse_args as pipeline_parse_args, run_pipeline
+from scripts.pipeline import parse_args as pipeline_parse_args, run_pipeline
 
 
 def identify_risk_spans(report: Dict, tau_N: float = 0.2, tau_S: float = 0.2) -> List[int]:
@@ -132,7 +132,7 @@ def run_repair_on_case(case_file: Path, args: argparse.Namespace) -> Dict[str, A
     repaired_case = create_repaired_case(original_case, risk_spans)
     temp_file = Path(f"/tmp/repaired_{case_file.name}")
     with open(temp_file, "w") as f:
-        json.dump({"schema_version": "1.0", "cases": [repaired_case]}, f)
+        json.dump({"cases": [repaired_case]}, f)
     
     repaired_args = pipeline_parse_args([
         "--case-file", str(temp_file),
@@ -216,7 +216,7 @@ def test_repair_transfer(train_file: Path, test_file: Path, args: argparse.Names
         # Create temp file for this test case
         temp_file = temp_dir / f"test_case_{i}.json"
         with open(temp_file, "w") as f:
-            json.dump({"schema_version": "1.0", "cases": [test_case]}, f)
+            json.dump({"cases": [test_case]}, f)
         
         # Run full attribution + repair
         print(f"  Test {i}/{len(test_cases)}: {test_case.get('case_id', f'case_{i}')}")
