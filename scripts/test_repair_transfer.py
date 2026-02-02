@@ -67,7 +67,6 @@ def create_repaired_case(case: Dict, risk_span_indices: List[int]) -> Dict:
     
     # Update case_id
     repaired["case_id"] = case["case_id"] + "_REPAIRED"
-    repaired["title"] = case.get("title", "") + " (Repaired)"
     
     return repaired
 

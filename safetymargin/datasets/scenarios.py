@@ -33,7 +33,6 @@ class Scenario:
     
     Attributes:
         case_id: Unique identifier for the scenario
-        title: Human-readable title
         question: The user question/prompt
         minimal_context: Minimal baseline context (system messages)
         spans: Specification spans to analyze
@@ -42,7 +41,6 @@ class Scenario:
         slot_values: Template slot substitutions
     """
     case_id: str
-    title: str
     question: str
     minimal_context: List[str]
     spans: List[str]
@@ -190,7 +188,6 @@ def _load_from_yaml(
     
     # Extract fields with simpler names
     scenario_case_id = data.get("case_id", case_path.stem)
-    title = data.get("title", "Untitled")
     question = data.get("question", "")
     
     # Context (simplified - just a list of strings)
@@ -221,7 +218,6 @@ def _load_from_yaml(
     
     scenario = Scenario(
         case_id=scenario_case_id,
-        title=title,
         question=question,
         minimal_context=minimal_context,
         spans=spans,
@@ -261,7 +257,6 @@ def _load_from_csv(
     
     # Parse CSV row
     scenario_case_id = row.get("case_id", case_path.stem)
-    title = row.get("title", "Untitled")
     question = row.get("question", "")
     
     # Context: pipe-separated
@@ -298,7 +293,6 @@ def _load_from_csv(
     
     scenario = Scenario(
         case_id=scenario_case_id,
-        title=title,
         question=question,
         minimal_context=minimal_context,
         spans=spans,
@@ -349,7 +343,6 @@ def _load_from_json(
     
     # Extract scenario components
     scenario_case_id = case.get("case_id", "unknown")
-    title = case.get("title", "Untitled")
     question = case.get("question", "")
     
     # Handle minimal context (can be list of strings or dict with 'base' key)
@@ -420,7 +413,6 @@ def _load_from_json(
     
     scenario = Scenario(
         case_id=scenario_case_id,
-        title=title,
         question=question,
         minimal_context=minimal_context,
         spans=spans,

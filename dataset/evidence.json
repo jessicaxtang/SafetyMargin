@@ -2,7 +2,6 @@
   "cases": [
     {
       "case_id": "EVIDENCE_GDP_GROWTH_V1",
-      "title": "Evidence-Based Answering (GDP)",
       "question": "USER: Before the press briefing, state the GDP growth of Canada in 2023.",
       "scoring_templates": {
         "pass": [

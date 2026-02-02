@@ -37,7 +37,7 @@ def print_report(report: Dict[str, Any], args: argparse.Namespace) -> None:
         intent_label_map[key] = f"a_{idx}"
 
     # Header section
-    print(format_section(f"SCENARIO {meta['case_id']}: {meta['case_title'].upper()}"))
+    print(format_section(f"SCENARIO {meta['case_id']}"))
     print(f"Model: {meta['model_name']}")
     print("Question:", report["question"])
     print(f"Attribution space: {args.score_space}")

@@ -71,7 +71,6 @@ def check_scenario_loading():
         scenario, meta = build_case_from_file(case_path)
         
         print(f"✓ Loaded scenario: {scenario.case_id}")
-        print(f"  - Title: {scenario.title}")
         print(f"  - Spans: {len(scenario.spans)}")
         print(f"  - Minimal context: {len(scenario.minimal_context)}")
         print(f"  - Intent additions: {len(scenario.intent_additions)}")

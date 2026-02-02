@@ -249,7 +249,6 @@ def run_pipeline(args: argparse.Namespace) -> Dict[str, Any]:
     report: Dict[str, Any] = {
         "meta": {
             "case_id": scenario.case_id,
-            "case_title": scenario.title,
             "model_name": getattr(model, "model_name", "unknown"),
             "slots": scenario.slot_values,
             "case_file": str(Path(args.case_file).resolve())
