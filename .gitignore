@@ -3,3 +3,20 @@ results/
 **/**/__pycache__/
 *.pyc
 .DS_Store
+
+dataset/workshop_dataset/*
+
+# experiment outputs (large generated data)
+experiments-*/
+
+# result files (generated outputs)
+results_generate_var_n=5/
+results_generate_var_n_measure/
+
+# visualization generated outputs
+visualization/out*/
+visualization/example_span_colormaps/
+visualization/example_attribution.png
+
+# IDE / tool artifacts
+.codex
