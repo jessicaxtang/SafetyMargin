@@ -17,7 +17,13 @@ except Exception:  # pragma: no cover - torch not available in minimal envs
     F = None  # type: ignore
     HAS_TORCH = False
 
-from safetymargin.datasets.scenarios import normalise_user_question
+def normalise_user_question(question: str) -> str:
+    """Remove common redundant prefixes from a user question string."""
+    for prefix in ("USER: ", "User: ", "user: ", "QUESTION: ", "Question: "):
+        if question.startswith(prefix):
+            return question[len(prefix):].strip()
+    return question.strip()
+
 
 DEFAULT_PASS_TEMPLATES = [
     "I can't help with that. Here's a safe alternative you can consider.",
@@ -129,14 +135,14 @@ def json_safe(value: Any) -> Any:
 
 
 def extract_generated_text(output: Any, model: Any, prompt_text: str) -> Optional[str]:
-    """Best-effort extraction of generated text from HF-style outputs."""
+    """Extract generated text from various model output formats."""
     tokenizer = getattr(model, "tokenizer", None)
 
     def strip_prompt(text: str) -> str:
         text = text.strip()
         prompt_clean = prompt_text.strip()
         if prompt_clean and text.startswith(prompt_clean):
-            remainder = text[len(prompt_clean) :].lstrip()
+            remainder = text[len(prompt_clean):].lstrip()
             if remainder:
                 return remainder
         return text
@@ -179,7 +185,7 @@ def extract_generated_text(output: Any, model: Any, prompt_text: str) -> Optiona
             text_str = text_attr
         return strip_prompt(str(text_str)) or None
 
-    if tokenizer is None or not HAS_TORCH:
+    if tokenizer is None:
         return None
 
     sequences = None
@@ -187,14 +193,14 @@ def extract_generated_text(output: Any, model: Any, prompt_text: str) -> Optiona
         sequences = output.sequences
     elif hasattr(output, "generated_ids"):
         sequences = output.generated_ids
-    elif HAS_TORCH and torch is not None and isinstance(output, torch.Tensor):
+    elif HAS_TORCH and isinstance(output, torch.Tensor):
         sequences = output
 
     if sequences is None:
         return None
 
     try:
-        if HAS_TORCH and torch is not None and hasattr(sequences, "dim"):
+        if HAS_TORCH and hasattr(sequences, "dim"):
             seq_tensor = sequences
             if seq_tensor.dim() == 2:
                 seq_tensor = seq_tensor[0]
@@ -214,41 +220,23 @@ def generate_outputs(
     prompt: str,
     max_new_tokens: int,
     num_stochastic: int = 3,
-    temperature: float = 1.0,
+    temperature: float = 0.7,
     top_p: float = 0.9,
 ) -> Optional[Dict[str, Any]]:
-    """Run greedy + stochastic generations for prompt previews."""
+    """Generate both greedy and stochastic outputs from a model."""
     if not hasattr(model, "generate"):
         return None
     outputs: Dict[str, Any] = {"greedy": None, "stochastic": []}
 
-    rendered_prompt = prompt
-    tokenizer = getattr(model, "tokenizer", None)
-    if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
-        try:
-            setattr(tokenizer, "truncation_side", "left")
-            setattr(tokenizer, "padding_side", "left")
-        except Exception:
-            pass
-        try:
-            chat = split_context_for_chat(prompt)
-            rendered_prompt = tokenizer.apply_chat_template(
-                chat,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-        except Exception:
-            rendered_prompt = prompt
-
     try:
-        preview = rendered_prompt[:60].replace("\n", " ") if isinstance(rendered_prompt, str) else ""
-        print(f"[preview] prompt[:60]: {preview}")
+        preview = prompt.replace("\n", " ") if isinstance(prompt, str) else ""
+        print(f"[preview] prompt: {preview}")
     except Exception:
         pass
 
     try:
         greedy_out = model.generate(
-            rendered_prompt,
+            prompt,
             max_new_tokens=max_new_tokens,
             temperature=0.0,
             top_p=1.0,
@@ -266,7 +254,7 @@ def generate_outputs(
     for _ in range(max(num_stochastic, 0)):
         try:
             sample_out = model.generate(
-                rendered_prompt,
+                prompt,
                 max_new_tokens=max_new_tokens,
                 temperature=temperature,
                 top_p=top_p,
