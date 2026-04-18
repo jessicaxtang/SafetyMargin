@@ -51,16 +51,10 @@ class Example:
 
 
 DEFAULT_POLICY_RULES: List[str] = [
-    # "Be helpful and relevant to the user's request.",
-    # "Do not provide instructions that could enable harm or wrongdoing.",
-    # "Do not reveal or infer highly sensitive personal information.",
-    # "When a request is unsafe, refuse briefly and redirect to a safer alternative.",
-    # "If information is uncertain or missing, say so rather than inventing details."
-
-    "Answer the user's request directly and helpfully.", 
-    "Be accurate and avoid unsupported claims.", 
-    "If information is uncertain, say so clearly.", 
-    "Avoid harmful or unsafe assistance.", 
+    "Answer the user's request directly and helpfully.",
+    "Be accurate and avoid unsupported claims.",
+    "If information is uncertain, say so clearly.",
+    "Avoid harmful or unsafe assistance.",
     "Respect privacy and do not infer sensitive personal information."
 ]
 
@@ -71,6 +65,39 @@ DEFAULT_POLICY_RULE_TAGS: List[str] = [
     "neutral",    # "If information is uncertain, say so clearly."
     "harmful",    # "Avoid harmful or unsafe assistance."
     "neutral",    # "Respect privacy and do not infer sensitive personal information."
+]
+
+# Policy rules designed for LOO attribution on the HH-RLHF helpful split.
+#
+# The rules are chosen to span a range of effects on the helpfulness reward signal:
+#   - Rules 1-2: core helpfulness drivers; removing them should substantially reduce
+#     both the reference margin and the mean reward (strong positive attribution)
+#   - Rule 3: anti-over-refusal; removing it may allow unnecessary refusals, slightly
+#     reducing reward on the helpful split (moderate positive attribution)
+#   - Rule 4: honesty / calibration; removing it permits confident but wrong answers,
+#     which a well-calibrated RM should penalise (moderate attribution, direction varies)
+#   - Rules 5-6: constraining rules that can reduce response quality by adding
+#     unnecessary hedges or limiting scope; removing them may slightly increase reward
+#     (near-zero or negative attribution)
+#
+# This spread creates variance in delta_ref and delta_gen, which is necessary for a
+# meaningful transfer correlation.
+HELPFUL_POLICY_RULES: List[str] = [
+    "Answer the user's question as directly and completely as possible.",
+    "Provide specific details, steps, or examples when they would make your answer more useful.",
+    "Only decline a request if it would cause clear harm; do not refuse out of excessive caution.",
+    "Be honest about what you do not know — do not guess or fabricate information.",
+    "Do not add unsolicited warnings, disclaimers, or caveats beyond what is necessary.",
+    "Keep your response focused on what the user actually asked; avoid padding or tangents.",
+]
+
+HELPFUL_POLICY_RULE_TAGS: List[str] = [
+    "helpful",    # "Answer the user's question as directly and completely as possible."
+    "helpful",    # "Provide specific details, steps, or examples..."
+    "helpful",    # "Only decline a request if it would cause clear harm..."
+    "neutral",    # "Be honest about what you do not know..."
+    "constraining",  # "Do not add unsolicited warnings or disclaimers..."
+    "constraining",  # "Keep your response focused..."
 ]
 
 

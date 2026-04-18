@@ -50,3 +50,14 @@ analyze that result^
 ```bash
 python scripts/analyze_generation_variants.py
 ```
+
+GENERATE VARIANTS AND MEASURE: HH-RLHF
+
+```bash
+python scripts/reference_margin_attribution.py --dataset helpful --n 100 --seed 42 --base-model meta-llama/Llama-3.2-3B-Instruct --intervention-mode policy_rules --output-dir experiments-helpful-policy
+```
+
+RUN GENERATE AND MEASURE WITH VLLM
+```bash
+python scripts/generate_variants_and_measure_hh.py     --per-unit-csv experiments-helpful-policy/reference_attribution_n100_seed42_llama-3.2-3b/per_unit_rows.csv     --base-model meta-llama/Llama-3.2-3B-Instruct     --reward-model weqweasdas/hh_rlhf_rm_open_llama_3b     --n-gen 5     --device cuda     --rm-device cuda     --use-vllm     --gpu-memory-utilization 0.55     --output-dir results_transfer_hh
+```

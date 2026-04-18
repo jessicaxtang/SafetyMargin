@@ -7,13 +7,6 @@ from safetymargin.models.huggingface_wrapper import (
     HuggingFaceModelWrapper,
     HFModel,
 )
-from safetymargin.scorer import (
-    LogProbNormScorer,
-    LogProbNormConfig,
-    DEFAULT_PASS_TEMPLATES,
-    DEFAULT_FAIL_TEMPLATES,
-)
-from safetymargin.templates import resolve_template_list
 from safetymargin.utils import generate_outputs, extract_generated_text
 from safetymargin.utils import (
     assemble_context,
@@ -35,6 +28,8 @@ from safetymargin.preference_transfer import (
     split_prompt_into_loo_units,
     run_leave_one_out_transfer_experiment,
     set_seed,
+    HELPFUL_POLICY_RULES,
+    HELPFUL_POLICY_RULE_TAGS,
 )
 
 __version__ = "0.1.0"
@@ -47,11 +42,6 @@ __all__ = [
     "ModelOutput",
     "HuggingFaceModelWrapper",
     "HFModel",
-    "LogProbNormScorer",
-    "LogProbNormConfig",
-    "DEFAULT_PASS_TEMPLATES",
-    "DEFAULT_FAIL_TEMPLATES",
-    "resolve_template_list",
     "generate_outputs",
     "extract_generated_text",
     "assemble_context",
