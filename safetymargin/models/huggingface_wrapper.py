@@ -112,10 +112,10 @@ class HuggingFaceModelWrapper(ModelWrapper):
         if self.use_quantization and self.quantization_config is not None:
             model_kwargs["quantization_config"] = self.quantization_config
             model_kwargs["device_map"] = "auto"
-            model_kwargs["torch_dtype"] = torch_dtype
+            model_kwargs["dtype"] = torch_dtype
         else:
             # CPU mode or no quantization, use float32 for compatibility
-            model_kwargs["torch_dtype"] = torch.float32 if torch_dtype == "auto" else torch_dtype
+            model_kwargs["dtype"] = torch.float32 if torch_dtype == "auto" else torch_dtype
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
             **model_kwargs
@@ -126,6 +126,11 @@ class HuggingFaceModelWrapper(ModelWrapper):
         # Ensure attentions and hidden states are available for downstream attribution
         self.model.config.output_attentions = True
         self.model.config.output_hidden_states = True
+        if getattr(self.model.config, "pad_token_id", None) is None:
+            self.model.config.pad_token_id = self.tokenizer.pad_token_id
+        if hasattr(self.model, "generation_config") and self.model.generation_config is not None:
+            if getattr(self.model.generation_config, "pad_token_id", None) is None:
+                self.model.generation_config.pad_token_id = self.tokenizer.pad_token_id
         self.model.eval()
         print(f"Model loaded on {self.device}")
     
@@ -170,6 +175,7 @@ class HuggingFaceModelWrapper(ModelWrapper):
                 top_p=top_p,
                 do_sample=temperature > 0,
                 use_cache=self.use_cache,
+                pad_token_id=self.tokenizer.pad_token_id,
                 return_dict_in_generate=True,
                 output_scores=return_log_probs,
             )
@@ -330,6 +336,92 @@ class HuggingFaceModelWrapper(ModelWrapper):
             "sum_log_prob": sum_log_prob,
             "mean_log_prob": mean_log_prob,
         }
+
+    def teacher_forcing_forward_batch(
+        self,
+        prompt_texts: List[str],
+        target_texts: List[str],
+        require_grad: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Run a batched teacher-forced forward pass over prompt/target pairs."""
+        if len(prompt_texts) != len(target_texts):
+            raise ValueError("prompt_texts and target_texts must have same length")
+        if len(prompt_texts) == 0:
+            return []
+
+        tokenizer = self.tokenizer
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            tokenizer.pad_token_id = tokenizer.eos_token_id
+        pad_id = tokenizer.pad_token_id
+
+        encoded_sequences: List[List[int]] = []
+        prompt_lengths: List[int] = []
+        target_lengths: List[int] = []
+
+        for prompt_text, target_text in zip(prompt_texts, target_texts):
+            if target_text is None or target_text == "":
+                raise ValueError("Target text must be provided for teacher forcing.")
+
+            messages = [{"role": "user", "content": prompt_text}]
+            prompt_rendered = tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            prompt_ids = tokenizer.encode(prompt_rendered, add_special_tokens=False)
+            target_ids = tokenizer.encode(target_text, add_special_tokens=False)
+            full_ids = prompt_ids + target_ids
+            if len(full_ids) == 0:
+                full_ids = [tokenizer.eos_token_id]
+
+            encoded_sequences.append(full_ids)
+            prompt_lengths.append(len(prompt_ids))
+            target_lengths.append(len(target_ids))
+
+        max_len = max(len(ids) for ids in encoded_sequences)
+        batch_size = len(encoded_sequences)
+
+        input_ids = torch.full((batch_size, max_len), fill_value=pad_id, dtype=torch.long, device=self.device)
+        attention_mask = torch.zeros((batch_size, max_len), dtype=torch.long, device=self.device)
+        labels = torch.full((batch_size, max_len), fill_value=-100, dtype=torch.long, device=self.device)
+
+        for idx, ids in enumerate(encoded_sequences):
+            seq_len = len(ids)
+            prompt_len = prompt_lengths[idx]
+            input_ids[idx, :seq_len] = torch.tensor(ids, dtype=torch.long, device=self.device)
+            attention_mask[idx, :seq_len] = 1
+            labels[idx, :seq_len] = input_ids[idx, :seq_len]
+            labels[idx, :prompt_len] = -100
+
+        if require_grad:
+            outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+        else:
+            with torch.no_grad():
+                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+
+        log_probs = F.log_softmax(outputs.logits[:, :-1, :], dim=-1)
+        shifted_labels = labels[:, 1:]
+        target_mask = shifted_labels != -100
+        gather_indices = shifted_labels.masked_fill(~target_mask, 0).unsqueeze(-1)
+        selected_log_probs = log_probs.gather(dim=-1, index=gather_indices).squeeze(-1)
+        selected_log_probs = selected_log_probs * target_mask.to(selected_log_probs.dtype)
+
+        sum_log_probs = selected_log_probs.sum(dim=1)
+
+        results: List[Dict[str, Any]] = []
+        for idx in range(batch_size):
+            target_token_count = int(target_lengths[idx])
+            sum_lp = float(sum_log_probs[idx].item())
+            mean_lp = sum_lp / target_token_count if target_token_count > 0 else 0.0
+            results.append(
+                {
+                    "sum_log_prob": sum_lp,
+                    "mean_log_prob": mean_lp,
+                    "target_token_count": target_token_count,
+                }
+            )
+        return results
     
     def get_log_probs(
         self,

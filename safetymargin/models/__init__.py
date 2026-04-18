@@ -8,9 +8,15 @@ from safetymargin.models.huggingface_wrapper import (
     HFModel,
 )
 
+try:
+    from safetymargin.models.vllm_wrapper import VLLMModelWrapper
+except Exception:
+    VLLMModelWrapper = None  # type: ignore
+
 __all__ = [
     "ModelWrapper",
     "ModelOutput",
     "HuggingFaceModelWrapper",
     "HFModel",
+    "VLLMModelWrapper",
 ]
