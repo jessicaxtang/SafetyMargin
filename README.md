@@ -74,50 +74,73 @@ python visualization/plot_span_colormap.py \
   --example-index 0
 ```
 
-## Preference Transfer Experiment
+## Prompt Repair & Verification Workflow
 
-Run preference-margin transfer on HH-RLHF:
+This section demonstrates the complete attribution-driven prompt repair pipeline: **attribute → edit based on attribution → verify improvement**.
 
-```bash
-python run_preference_transfer.py \
-  --dataset harmless \
-  --n 500 \
-  --k 5 \
-  --temperature 0.7 \
-  --base-model meta-llama/Llama-3.2-1B-Instruct
+### Step 1: Attribution (Leave-One-Out Analysis)
 
-# Faster sampling with vLLM
-python run_preference_transfer.py \
-  --dataset harmless \
-  --n 500 \
-  --k 5 \
-  --base-model meta-llama/Llama-3.2-1B-Instruct \
-  --sampling-backend vllm
-
-# Pin reference-margin scoring to a second GPU
-python run_preference_transfer.py \
-  --dataset harmless \
-  --n 500 \
-  --k 5 \
-  --base-model meta-llama/Llama-3.2-1B-Instruct \
-  --sampling-backend vllm \
-  --reference-device cuda:1
-```
-
-Policy-rule leave-one-out (remove one behavioral rule at a time):
+Compute reference-margin LOO attribution for a dataset:
 
 ```bash
-python run_preference_transfer.py \
-  --dataset harmless \
-  --n 500 \
-  --k 5 \
+# Local toy dataset
+python scripts/reference_margin_attribution.py \
+  --local-dataset dataset/toy_data/data.json \
+  --base-model meta-llama/Llama-3.2-1B-Instruct \
+  --intervention-mode prompt_units \
+  --prompt-unit-splitter nltk_sentence \
+  --output-dir experiments-toy-data
+
+# HH-RLHF dataset with policy-rule LOO (remove one rule at a time)
+python scripts/reference_margin_attribution.py \
+  --dataset helpful \
+  --n 100 \
+  --seed 42 \
+  --base-model meta-llama/Llama-3.2-3B-Instruct \
   --intervention-mode policy_rules \
-  --policy-placement prepend \
-  --base-model meta-llama/Llama-3.2-1B-Instruct
+  --output-dir experiments-helpful-policy
 ```
 
-Outputs are written to `experiments-<dataset>/preference_transfer_n<N>_k<K>_seed<S>/`:
-- `results.csv` – per-example summary metrics
-- `results_detailed.json` – full results with per-unit LOO rows
-- `config.json` – run configuration
-- `scatter_*.png` – transfer correlation scatter plots
+### Step 2: Visualization & Analysis
+
+Generate attribution heatmaps and span-level visualizations:
+
+```bash
+python visualization/attribution_evaluation.py --model-name llama-3.2-1b
+
+python visualization/plot_span_colormap.py \
+  --per-unit-path experiments-toy-data/reference_attribution_n100_seed42_llama-3.2-1b/per_unit_rows.csv \
+  --example-index 0
+```
+
+### Step 3: Variant Generation & Measurement
+
+Sample multiple responses for each prompt and measure the unsafe response rate before/after edits:
+
+```bash
+# Local dataset
+python scripts/generate_variants_and_measure.py
+
+# HH-RLHF with reward model scoring
+python scripts/generate_variants_and_measure_hh.py \
+  --per-unit-csv experiments-helpful-policy/reference_attribution_n100_seed42_llama-3.2-3b/per_unit_rows.csv \
+  --base-model meta-llama/Llama-3.2-3B-Instruct \
+  --reward-model weqweasdas/hh_rlhf_rm_open_llama_3b \
+  --n-gen 5 \
+  --use-vllm \
+  --gpu-memory-utilization 0.55 \
+  --output-dir results_transfer_hh
+```
+
+### Step 4: Results Analysis
+
+Analyze generation metrics and safety improvements:
+
+```bash
+python scripts/analyze_generation_variants.py
+```
+
+Outputs include:
+- Attribution CSVs with per-unit LOO impact scores
+- Visualization PNGs (heatmaps, scatter plots, span colormaps)
+- Generation variant results with pre/post-edit unsafe response rates
