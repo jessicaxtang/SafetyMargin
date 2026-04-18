@@ -1,6 +1,7 @@
-# Optimizing a Margin of Safety via Prompt Repair in Large Language Models
+# SafetyMargin
 
-This repository implements an attribution-driven prompt repair workflow that optimizes for a margin of safety in large language models.
+[MEW@AAAI2026] Python code and dataset repository for paper ["Optimizing a Margin of Safety via Prompt Repair in Large Language Models"](https://ceur-ws.org/Vol-4189/paper6.pdf). This repository implements an attribution-driven prompt repair workflow across three datasets.
+
 
 ## Directory
 
