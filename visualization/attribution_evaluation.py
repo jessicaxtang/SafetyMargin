@@ -78,20 +78,7 @@ def load_per_unit(per_unit_path: Path, example_filter: set[int] | None) -> pd.Da
     return prompt_units
 
 
-def load_example_labels(example_path: Path, example_ids: list[int]) -> dict[int, str]:
-    if not example_path.exists():
-        return {idx: f"Example {idx}" for idx in example_ids}
 
-    ex = pd.read_csv(example_path)
-    label_map: dict[int, str] = {}
-    for idx in example_ids:
-        row = ex[ex["example_index"] == idx]
-        if row.empty:
-            label_map[idx] = f"Example {idx}"
-            continue
-        dataset_prompt = row.iloc[0]["dataset_prompt"]
-        label_map[idx] = f"E{idx:02d} • {_shorten(dataset_prompt, width=70)}"
-    return label_map
 
 
 def load_ground_truth_labels(ground_truth_path: Path, label_column: str | None) -> pd.DataFrame:
@@ -139,19 +126,7 @@ def load_ground_truth_labels(ground_truth_path: Path, label_column: str | None) 
     return ground_truth_df[["example_index", "unit_index", "ground_truth"]]
 
 
-def pivot_attributions(per_unit: pd.DataFrame, value_column: str) -> pd.DataFrame:
-    heatmap = per_unit.pivot_table(
-        index="example_index",
-        columns="unit_index",
-        values=value_column,
-        aggfunc="first",
-    )
 
-    heatmap = heatmap.sort_index()
-    ordered_cols = sorted(col for col in heatmap.columns if pd.notna(col))
-    heatmap = heatmap.reindex(columns=ordered_cols)
-
-    return heatmap
 
 
 def attach_ground_truth_labels(per_unit: pd.DataFrame, ground_truth: pd.DataFrame) -> pd.DataFrame:
@@ -523,73 +498,7 @@ def plot_scatter(per_unit_ground_truth: pd.DataFrame, output_path: Path, value_c
     fig.savefig(output_path, dpi=300)
     plt.close(fig)
 
-def plot_heatmap(
-    heatmap: pd.DataFrame,
-    per_unit_ground_truth: pd.DataFrame,
-    example_labels: dict[int, str],
-    output_path: Path,
-    title: str,
-    show: bool,
-    value_column: str,
-):
-    sns.set_theme(style="whitegrid")
-    cmap = sns.diverging_palette(240, 10, as_cmap=True)
-    mask = heatmap.isna()
 
-    fig, ax = plt.subplots(figsize=(1.6 * len(heatmap.columns), 0.6 * len(heatmap.index) + 2))
-    sns.heatmap(
-        heatmap,
-        ax=ax,
-        cmap=cmap,
-        center=0,
-        mask=mask,
-        linewidths=0.4,
-        linecolor="white",
-        cbar_kws={"label": f"ΔM_LOO ({value_column})"},
-    )
-
-    ax.set_xlabel("Prompt unit index (sentence order)")
-    ylabels = [example_labels.get(idx, f"Example {idx}") for idx in heatmap.index]
-    ax.set_yticklabels(ylabels, rotation=0)
-    ax.set_xticklabels([f"Unit {int(col)}" for col in heatmap.columns])
-    ax.set_title(title)
-
-    row_pos = {idx: pos for pos, idx in enumerate(heatmap.index)}
-    col_pos = {int(col): pos for pos, col in enumerate(heatmap.columns)}
-
-    for row in per_unit_ground_truth.itertuples():
-        r = row_pos.get(row.example_index)
-        c = col_pos.get(row.unit_index)
-        if r is None or c is None:
-            continue
-        value = heatmap.iloc[r, c]
-        if pd.isna(value):
-            continue
-
-        symbol = "✓" if row.ground_truth == "helpful" else "✗"
-        agree = (value >= 0 and row.ground_truth == "helpful") or (
-            value < 0 and row.ground_truth == "harmful"
-        )
-        symbol_color = "#0f5132" if agree else "#f59e0b"
-
-        ax.text(
-            c + 0.5,
-            r + 0.5,
-            symbol,
-            ha="center",
-            va="center",
-            color=symbol_color,
-            fontsize=12,
-            fontweight="bold",
-        )
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
-    fig.savefig(output_path, dpi=300, bbox_inches="tight")
-    if show:
-        plt.show()
-    else:
-        plt.close(fig)
 
 def plot_attribution_histogram(per_unit: pd.DataFrame, output_path: Path, value_column: str) -> None:
     if value_column not in per_unit.columns:
@@ -710,17 +619,7 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Where to write the LOO vs AOI scatter plot.",
     )
-    parser.add_argument(
-        "--title",
-        type=str,
-        default="Handcrafted prompt attribution heatmap",
-        help="Title text for the chart.",
-    )
-    parser.add_argument(
-        "--no-show",
-        action="store_true",
-        help="Skip displaying the figure (still saves to disk).",
-    )
+
     args = parser.parse_args()
 
     # Set defaults based on model size if not provided
@@ -762,8 +661,6 @@ def main() -> None:
         tau_neg=TAU_NEG,
         value_column=metric_column,
     )
-    heatmap = pivot_attributions(per_unit_ground_truth, value_column=metric_column)
-    example_labels = load_example_labels(args.examples_path, list(heatmap.index))
 
     loo_metrics = compute_metrics(per_unit_ground_truth, value_column=metric_column)
     print_metrics(loo_metrics, label="LOO attribution")
@@ -786,18 +683,6 @@ def main() -> None:
         print(f"Saved LOO vs AOI bucket matrix to {args.bucket_output}")
         print(f"Saved per-unit bucket annotations to {args.bucket_csv}")
         print(f"Saved LOO vs AOI scatter plot to {args.scatter_output}")
-
-    plot_heatmap(
-        heatmap=heatmap,
-        per_unit_ground_truth=per_unit_ground_truth,
-        example_labels=example_labels,
-        output_path=args.output,
-        title=args.title,
-        show=not args.no_show,
-        value_column=metric_column,
-    )
-
-    print(f"Saved heatmap visualization to {args.output}")
 
     histogram_path = args.output.parent / f"{args.output.stem}_{metric_column}_histogram.png"
     plot_attribution_histogram(per_unit, histogram_path, value_column=metric_column)

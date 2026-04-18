@@ -31,7 +31,7 @@ python scripts/reference_margin_attribution.py --local-dataset dataset/handcraft
 
 plot heatmap/aggregate metrics etc
 ```bash
-python visualization/figure_heatmap.py --model-name llama-3.2-1b
+python visualization/attribution_evaluation.py --model-name llama-3.2-1b
 ```
 
 visualize span contributions and save as png
