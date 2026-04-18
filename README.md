@@ -12,21 +12,21 @@ This repository implements an attribution-driven prompt repair workflow that opt
 - `scripts/` – Experiment and analysis scripts
   - `reference_margin_attribution.py` – Main LOO attribution analysis on local datasets
   - `aggregate_reference_attribution.py` – Aggregate results across runs into CSV summaries
-  - `generate_variants_and_measure.py` – Sample output variants and measure unsafe rate
+  - `generate_variants_and_measure.py` – Sample output variants and measure unsafe rate on local safety datasets
+  - `generate_variants_and_measure_hh.py` – Sample output variants on HH-RLHF dataset
   - `analyze_generation_variants.py` – Analyze results from generation variant runs
+  - `prompt_edit_success_rate.py` – Measure success rate of prompt edits on toy datasets
   - `validate_policy_block.py` – Validate policy-rule attribution with synthetic rules
   - `plot_all_results.py` – Plot repair effectiveness figures
 - `visualization/` – Figure generation scripts
   - `figure_heatmap.py` – Attribution heatmap and precision/recall evaluation
-  - `plot_span_colormap.py` – Color-coded per-unit span attribution view
+  - `plot_span_colormap.py` – Color-coded per-unit span attribution view (tornado chart)
   - `plot_revision_margins.py` – Plot margin shifts before/after prompt revisions
   - `figure_common.py` – Shared visualization utilities
 - `dataset/` – Datasets in JSON format
-  - `basic/` – Toy safety dataset
+  - `toy_data/` – Toy sample dataset for quick testing
   - `handcrafted_v1/`, `handcrafted_v2/` – Custom safety prompt cases with ground-truth labels
-  - `workshop_dataset/` – Workshop paper datasets (evidence, injection, privacy, role confusion)
 - `tests/` – Unit tests
-- `thesis_report/` – LaTeX thesis source and related documents
 
 ## Installation
 
@@ -48,11 +48,11 @@ Run LOO attribution analysis on a local dataset:
 
 ```bash
 python scripts/reference_margin_attribution.py \
-  --local-dataset dataset/basic/basic.json \
+  --local-dataset dataset/toy_data/data.json \
   --base-model meta-llama/Llama-3.2-1B-Instruct \
   --intervention-mode prompt_units \
   --prompt-unit-splitter nltk_sentence \
-  --output-dir experiments-basic
+  --output-dir experiments-toy-data
 
 python scripts/reference_margin_attribution.py \
   --local-dataset dataset/handcrafted_v2/handcrafted_dataset2.json \
@@ -66,7 +66,7 @@ Aggregate results and generate figures:
 
 ```bash
 python scripts/aggregate_reference_attribution.py \
-  --roots experiments-basic experiments-handcrafted
+  --roots experiments-toy-data experiments-handcrafted
 
 python visualization/figure_heatmap.py --model-name llama-3.2-1b
 python visualization/plot_span_colormap.py \
