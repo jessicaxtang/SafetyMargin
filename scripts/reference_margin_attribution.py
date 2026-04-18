@@ -511,9 +511,7 @@ def main(argv: List[str] | None = None) -> int:
     if args.prompt_unit_labels:
         prompt_unit_metadata = _load_prompt_unit_metadata(Path(args.prompt_unit_labels))
 
-    enable_add_one_in = bool(args.add_one_in)
-    if enable_add_one_in and args.intervention_mode != "prompt_units":
-        raise ValueError("--add-one-in is only supported for prompt_units intervention mode.")
+    enable_add_one_in = bool(args.add_one_in) and args.intervention_mode == "prompt_units"
     if enable_add_one_in and not prompt_unit_metadata:
         raise ValueError("--add-one-in requires --prompt-unit-labels metadata.")
 
