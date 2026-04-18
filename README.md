@@ -19,7 +19,7 @@ This repository implements an attribution-driven prompt repair workflow that opt
   - `validate_policy_block.py` – Validate policy-rule attribution with synthetic rules
   - `plot_all_results.py` – Plot repair effectiveness figures
 - `visualization/` – Figure generation scripts
-  - `figure_heatmap.py` – Attribution heatmap and precision/recall evaluation
+  - `attribution_evaluation.py` – Attribution heatmap and precision/recall evaluation
   - `plot_span_colormap.py` – Color-coded per-unit span attribution view (tornado chart)
   - `plot_revision_margins.py` – Plot margin shifts before/after prompt revisions
   - `figure_common.py` – Shared visualization utilities
@@ -68,7 +68,7 @@ Aggregate results and generate figures:
 python scripts/aggregate_reference_attribution.py \
   --roots experiments-toy-data experiments-handcrafted
 
-python visualization/figure_heatmap.py --model-name llama-3.2-1b
+python visualization/attribution_evaluation.py --model-name llama-3.2-1b
 python visualization/plot_span_colormap.py \
   --per-unit-path experiments-handcrafted/reference_attribution_n100_seed42_llama-3.2-3b/per_unit_rows.csv \
   --example-index 0
